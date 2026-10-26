@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: helyra_user
+          POSTGRES_PASSWORD: helyra_secure_password_2026
+          POSTGRES_DB: helyra_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
+
+      # Backend Checks & Tests
+      - name: Install Backend Dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Generate Prisma Client
+        working-directory: backend
+        run: npx prisma generate
+
+      - name: Run Database Migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: "postgresql://helyra_user:helyra_secure_password_2026@localhost:5432/helyra_db?schema=public"
+          DIRECT_URL: "postgresql://helyra_user:helyra_secure_password_2026@localhost:5432/helyra_db?schema=public"
+        run: npx prisma db push --skip-generate
+
+      - name: Build Backend
+        working-directory: backend
+        run: npm run build
+
+      - name: Run Backend Tests
+        working-directory: backend
+        env:
+          DATABASE_URL: "postgresql://helyra_user:helyra_secure_password_2026@localhost:5432/helyra_db?schema=public"
+          DIRECT_URL: "postgresql://helyra_user:helyra_secure_password_2026@localhost:5432/helyra_db?schema=public"
+          NODE_ENV: test
+          AUTH_SECRET: "test-auth-secret-key-32-chars-long!"
+          SESSION_SECRET: "test-session-secret-key-32-chars!"
+          ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        run: npm run test
+
+      # Frontend Checks & Build
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Typecheck Frontend
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Build Frontend
+        working-directory: frontend
+        run: npm run build

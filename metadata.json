@@ -1,0 +1,13 @@
+{
+  "name": "HELYRA — Adaptive Family Health Companion",
+  "description": "AI-powered adaptive family health companion providing personalized lifestyle guidance, medical document understanding, and voice interaction.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "accelerometer",
+    "gyroscope"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
